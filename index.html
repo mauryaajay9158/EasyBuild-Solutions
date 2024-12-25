@@ -1,0 +1,94 @@
+<?php 
+// Start the session
+session_start();
+
+// Check if the contractor is logged in
+if (!isset($_SESSION['contractor_id'])) {
+    // Redirect to the login page if not logged in
+    header("Location: login_signup.php");
+    exit();
+}
+
+// Database connection
+$server = "localhost";
+$username = "root";
+$password = "";
+$dbname = "easybuild_solutions";
+$con = mysqli_connect($server, $username, $password, $dbname);
+
+if (!$con) {
+    die("Connection failed: " . mysqli_connect_error());
+}
+
+// Fetch available projects for bidding
+$sql = "SELECT * FROM projects";
+$result = mysqli_query($con, $sql);
+
+// Handle bid submission
+if (isset($_POST['submit_bid'])) {
+    $project_id = mysqli_real_escape_string($con, $_POST['project_id']);
+    $bid_amount = mysqli_real_escape_string($con, $_POST['bid_amount']);
+    $estimated_time = mysqli_real_escape_string($con, $_POST['estimated_time']);
+    $experience = mysqli_real_escape_string($con, $_POST['experience']);
+    $material_cost = mysqli_real_escape_string($con, $_POST['material_cost']);
+    $payment_terms = mysqli_real_escape_string($con, $_POST['payment_terms']);
+    $additional_notes = mysqli_real_escape_string($con, $_POST['additional_notes']);
+    $contractor_id = $_SESSION['contractor_id'];  // Use contractor_id from session
+
+    $sql = "INSERT INTO bids (project_id, contractor_id, bid_amount, estimated_time, experience, material_cost, payment_terms, additional_notes) 
+            VALUES ('$project_id', '$contractor_id', '$bid_amount', '$estimated_time', '$experience', '$material_cost', '$payment_terms', '$additional_notes')";
+    
+    if (mysqli_query($con, $sql)) {
+        echo "Bid submitted successfully!";
+    } else {
+        echo "Error: " . mysqli_error($con);
+    }
+}
+
+mysqli_close($con);
+?>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contractor Dashboard</title>
+</head>
+<body>
+    <h1>Welcome, Contractor</h1>
+    <h2>Available Projects</h2>
+
+    <?php if (mysqli_num_rows($result) > 0): ?>
+        <table border="1">
+            <tr>
+                <th>Project Name</th>
+                <th>Description</th>
+                <th>Budget</th>
+                <th>Action</th>
+            </tr>
+            <?php while ($row = mysqli_fetch_assoc($result)): ?>
+                <tr>
+                    <td><?= $row['project_name'] ?></td>
+                    <td><?= $row['project_description'] ?></td>
+                    <td><?= $row['budget'] ?></td>
+                    <td>
+                        <form action="contractor_page.php" method="POST">
+                            <input type="hidden" name="project_id" value="<?= $row['id'] ?>">
+                            <input type="number" name="bid_amount" placeholder="Bid Amount in Rupees" required><br>
+                            <input type="text" name="estimated_time" placeholder="Estimated Time (e.g., 2 weeks)" required><br>
+                            <textarea name="experience" placeholder="Relevant Experience" required></textarea><br>
+                            <input type="number" name="material_cost" placeholder="Material Cost in Rupees (optional)" step="0.01"><br>
+                            <input type="text" name="payment_terms" placeholder="Payment Terms (e.g., 50% upfront)" required><br>
+                            <textarea name="additional_notes" placeholder="Additional Notes (optional)"></textarea><br>
+                            <button type="submit" name="submit_bid">Submit Bid</button>
+                        </form>
+                    </td>
+                </tr>
+            <?php endwhile; ?>
+        </table>
+    <?php else: ?>
+        <p>No projects available at the moment.</p>
+    <?php endif; ?>
+</body>
+</html>
